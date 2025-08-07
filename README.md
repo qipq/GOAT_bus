@@ -82,7 +82,7 @@ GOAT_bus is a production-ready event communication system designed for my in dev
 
 ## Project Stats
 
-- **Lines of Code**: ~3,000
+- **Lines of Code**: ~3,800
 - **Features**: 50+ advanced features
 - **Test Coverage**: 85%+
 - **Performance**: 10,000+ events/second
