@@ -1,4 +1,3 @@
-# core/events/event_bus.gd
 extends RefCounted
 class_name GoatBus
 
