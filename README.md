@@ -3,13 +3,13 @@
 **Version**: 1.0.0  
 **Author**: ONE OF HAM  
 **Engine**: purpose built for the 2.5D-engine but will work on any Godot-based project  
-**License**: [Your License]
+**License**: MIT
 
-> **Enterprise-grade event bus system with advanced features like persistent queuing, event replay, backpressure control, and health-aware routing.**
+**Enterprise-grade event bus system, purpose built for game design, with advanced features like persistent queuing, event replay, backpressure control, and health-aware routing.**
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Features](#features)
