@@ -1,4 +1,4 @@
-# GOAT_bus - Universal Event Bus System for Godot
+# GOAT_bus (~~God Object Aggregator Thingy~~ "Greatest of all Time” bus) - Universal All Bus System for Godot
 
 **Version**: 1.0.0  
 **Author**: ONE OF HAM  
