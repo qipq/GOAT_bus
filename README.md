@@ -5,7 +5,7 @@
 **Engine**: purpose built for the 2.5D-engine but will work on any Godot-based project  
 **License**: MIT
 
-**Enterprise-grade event bus system, purpose built for game design, with advanced features like persistent queuing, event replay, backpressure control, and health-aware routing.**
+**Enterprise-grade event bus system, purpose built for game design, with advanced features like persistent queuing, event replay, pseudo-backpressure control, and health-aware routing.**
 
 ---
 
