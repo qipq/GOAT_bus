@@ -227,22 +227,6 @@ graph TD
 7. **Delivery**: Execute subscriber callbacks
 8. **Monitoring**: Track metrics and performance
 
-### 2.5D-Engine Integration
-
-This event bus is specifically designed for the **2.5D-engine ecosystem** with:
-
-- **Scene Management**: Event-driven scene transitions and state management
-- **Entity Communication**: Efficient component-to-component communication
-- **System Integration**: Seamless integration with engine subsystems
-- **Performance Optimization**: Frame-aware processing for smooth gameplay
-- **Debug Tools**: Built-in event monitoring for development
-
-**Future Full Version Features**:
-- Pattern-based event analysis for procedural generation
-- Advanced debugging tools for event-driven procedural systems
-- Machine learning integration for pattern recognition
-- Extended enterprise features for large-scale games
-
 ---
 
 ## API Reference
