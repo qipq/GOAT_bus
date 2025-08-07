@@ -91,6 +91,19 @@ GOAT_bus is a production-ready event communication system designed for my in dev
 
 ---
 
+## How Does it Work?
+
+In a nutshell, goat_bus.gd provides the messaging backbone for events and handles decoupling, storage, validation, backpressure, replay, batching, etc.., while goat_bus_node.gd is its intermediary for communication to any node, handling subscriptions, auto-retry, modular decoupling, scene-tree hooks, and local congig.
+
+Breaking it down like this has several advantages:
+ - Nodes can subscribe/unsubscribe at any time as they enter/exit the tree.
+ - You can attach goat_bus_node.gd as a child or a script on *any* scene, enemies, terrain chunks, UI, you name it.
+ - You can have multiple buses for different subsystems (audio, net, world, etc...) or "local" buses for a branch of the tree, like a dungeon or a menu.
+ - When you reload scenes or scripts in the editor or even in game, the node wrapper handles auto-reconnectin and cleans up subscriptions, no more dangling or weak links.
+ - And at least a dozen more, now that you get the idea.
+
+---
+
 ## Quick Start
 
 ### 1. Basic Setup
