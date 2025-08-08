@@ -9,23 +9,6 @@
 
 ---
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Installation & Scene Tree Setup](#installation--scene-tree-setup)
-- [Architecture Overview](#architecture-overview)
-- [API Reference](#api-reference)
-- [Advanced Features](#advanced-features)
-- [Performance & Monitoring](#performance--monitoring)
-- [Examples](#examples)
-- [Best Practices](#best-practices)
-- [Troubleshooting](#troubleshooting)
-- [Roadmap](#roadmap)
-
----
-
 ## Overview
 
 GOAT_bus is a production-ready event communication system designed for my in development **2.5D-engine** project. Unlike traditional event buses, GoatBus provides enterprise-level features including persistent queuing, event replay, backpressure control, and health-aware routing.
