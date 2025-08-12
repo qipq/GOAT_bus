@@ -1,4 +1,4 @@
-# GOAT_bus (~~God Object Aggregator Thingy~~ "Greatest of all Time" bus) - Universal All Bus System for Godot
+# GOAT_bus (~~God Object Aggregator Thingy~~ "Greatest of all Time" bus) - Now in pieces!
 
 **Version**: 1.1.0  
 **Author**: ONE OF HAM  
@@ -28,7 +28,7 @@ GOAT_bus is a production-ready event communication system designed for my in dev
 
 ---
 
-# 🆕 What's New in GoatBus v1.1
+# What's New in GoatBus v1.1
 
 **Release Date**: August 2025  
 **Code Name**: "Analysis & Injection"  
@@ -38,9 +38,9 @@ GoatBus v1.1 introduces a complete analysis and object injection ecosystem along
 
 ---
 
-## 🎯 Headline New Features
+## Headline New Features
 
-### 📊 **Complete Analysis System (NEW)**
+### **Complete Analysis System (NEW)**
 Brand new script analysis and object injection framework:
 
 ```gdscript
@@ -58,7 +58,7 @@ print("Found ", analysis.methods.size(), " methods")
 print("Detected ", analysis.cross_script_calls.size(), " external dependencies")
 ```
 
-### 🏭 **Object Injection System (NEW)**
+### **Object Injection System (NEW)**
 Dependency injection and object management:
 
 ```gdscript
@@ -73,7 +73,7 @@ injector.start_discovery()  # Finds EventBus, SystemRegistry, etc.
 var event_objects = injector.get_injectable_object("EventObjects")
 ```
 
-### 🔍 **Automatic Project Scanning (NEW)**
+### **Automatic Project Scanning (NEW)**
 File system monitoring and analysis:
 
 ```gdscript
@@ -86,7 +86,7 @@ wrapper.file_changed.connect(_on_script_modified)
 wrapper.set_file_watch_interval(1.0)  # Poll every second
 ```
 
-### 🎯 **Type-Safe Event Objects (NEW)**
+### **Type-Safe Event Objects (NEW)**
 Structured event creation with validation:
 
 ```gdscript
@@ -102,7 +102,7 @@ bus.publish("phase_started", phase_event)
 
 ---
 
-## 🔧 New Core Components
+## New Core Components
 
 ### **ObjDictInjector** (NEW)
 Main analysis core with dependency management:
@@ -135,7 +135,7 @@ Type-safe event creation system:
 
 ---
 
-## 📊 Enhanced Analysis Capabilities
+## Enhanced Analysis Capabilities
 
 ### **Code Quality Analysis** (NEW)
 ```gdscript
@@ -175,7 +175,7 @@ print("Responsibilities: ", arch.responsibilities)
 
 ---
 
-## 🔄 Enhanced Event Processing
+## Enhanced Event Processing
 
 ### **Integration Batching** (NEW)
 Specialized batching for system integration events:
@@ -222,7 +222,7 @@ backpressure.add_backpressure_callback(_on_pressure_changed)
 
 ---
 
-## 🛠️ Development & Integration Features
+## Development & Integration Features
 
 ### **Autocomplete Generation** (NEW)
 IDE integration support:
@@ -266,7 +266,7 @@ print("Overall valid: ", validation.overall_valid)
 
 ---
 
-## 📦 Plugin Integration
+## Plugin Integration
 
 ### **Godot Plugin Support** (NEW)
 Full plugin integration with autoload setup:
@@ -297,13 +297,13 @@ func _ready():
 
 ---
 
-## 🔧 Version Compatibility
+## Version Compatibility
 
 ### **Backwards Compatibility**
-- ✅ **100% compatible** with v1.0 GoatBus API
-- ✅ **All existing events** continue to work unchanged  
-- ✅ **No breaking changes** to core event bus functionality
-- ✅ **Optional features** - analysis system is completely optional
+- **100% compatible** with v1.0 GoatBus API
+- **All existing events** continue to work unchanged  
+- **No breaking changes** to core event bus functionality
+- **Optional features** - analysis system is completely optional
 
 ### **Migration Path**
 ```gdscript
@@ -318,7 +318,7 @@ analysis_system.analyze_script("res://player.gd")  # New analysis features
 
 ---
 
-## 📊 By the Numbers
+## By the Numbers
 
 ### **Code Growth**
 - **+20,000 lines** of new analysis and injection code
@@ -340,7 +340,7 @@ analysis_system.analyze_script("res://player.gd")  # New analysis features
 
 ---
 
-## 🚀 Getting Started with v1.1
+## Getting Started with v1.1
 
 ### **Enable Analysis System**
 ```gdscript
@@ -375,7 +375,7 @@ if quality.complexity_score > 7.0:
 
 ---
 
-## 🎯 What's Next
+## What's Next
 
 GoatBus v1.1 sets the foundation for the upcoming **v2.0 "Full Engine"** release, which will include:
 
@@ -1291,7 +1291,7 @@ func profile_event_performance():
     var duration_ms = end_time - start_time
     
     var stats = bus.get_enhanced_performance_stats()
-    print("✅ 1000 events processed in: ", duration_ms, "ms")
+    print(" 1000 events processed in: ", duration_ms, "ms")
     print("Throughput: ", 1000.0 / (duration_ms / 1000.0), " events/sec")
     print("Average per event: ", duration_ms / 1000.0, "ms")
     
@@ -1301,11 +1301,11 @@ func profile_event_performance():
     # - Per event: 0.015-0.025ms
     
     if duration_ms > 100:
-        print("⚠️ Performance below expected - check system load")
+        print(" Performance below expected - check system load")
     elif duration_ms < 10:
-        print("🚀 Excellent performance - system optimized")
+        print(" Excellent performance - system optimized")
     else:
-        print("✅ Performance within expected range")
+        print(" Performance within expected range")
 ```
 
 ---
@@ -1428,7 +1428,7 @@ The engine architecture prioritizes:
 | Async processing | ❌ No | ✅ Yes | ✅ Yes | 🟡 Partial (frame-aware) |
 | **Performance & Control** |
 | Rate limiting/throttling | ❌ No | ✅ Yes | ✅ Yes | ✅ Yes (frame budget) |
-| Backpressure | ❌ No | ✅ Yes | ✅ Yes | ❌ No (batch deferral only) |
+| Backpressure | ❌ No | ✅ Yes | ✅ Yes | 🟡 Partial (batch deferral only) |
 | Event prioritization | 🟡 Sometimes | 🟡 Sometimes | ✅ Yes | ✅ Yes (health-adjusted) |
 | Event batching | ❌ Rare | ✅ Yes | ✅ Yes | ✅ Yes (by type/phase) |
 | Batch size control | ❌ No | ✅ Yes | ✅ Yes | ✅ Yes (runtime adjustable) |
@@ -1620,7 +1620,7 @@ func strip_schema_validation():
 
 **Memory Saved**: 10-100KB (depending on schema count)  
 **Performance Gain**: 10-20% faster event publishing  
-**Risk**: ⚠️ No data validation - ensure your events are correct!
+**Risk**: No data validation - ensure your events are correct!
 
 #### 5. Performance Monitoring
 
@@ -1666,7 +1666,7 @@ func strip_persistent_queuing():
 ```
 
 **Memory Saved**: 500KB-5MB (depending on queue usage)  
-**Risk**: ⚠️ Events may be lost if subscribers are busy
+**Risk**: Events may be lost if subscribers are busy
 
 #### 7. Backpressure Control
 
@@ -1685,7 +1685,7 @@ func strip_backpressure_control():
 
 **Memory Saved**: ~20KB  
 **Performance Gain**: Slightly faster event processing  
-**Risk**: ⚠️ No protection against event flooding
+**Risk**: No protection against event flooding
 
 #### 8. Health-Aware Routing
 
@@ -1895,12 +1895,12 @@ Core Event System (Required)
 
 Before removing features, ensure:
 
-- ✅ Your game doesn't rely on the feature
-- ✅ No critical systems depend on removed functionality  
-- ✅ Alternative error handling is in place
-- ✅ Performance impact is acceptable
-- ✅ Memory savings justify the removal
-- ✅ You can re-enable for debugging if needed
+- Your game doesn't rely on the feature
+- No critical systems depend on removed functionality  
+- Alternative error handling is in place
+- Performance impact is acceptable
+- Memory savings justify the removal
+- You can re-enable for debugging if needed
 
 ### Testing Stripped Builds
 
@@ -1923,7 +1923,7 @@ func test_core_functionality():
     await get_tree().process_frame
     assert(test_received, "Basic event flow broken!")
     
-    print("✅ Core functionality intact")
+    print("Core functionality intact")
 
 func test_performance_impact():
     var bus = get_node("/root/EventBusEnhanced")
@@ -1934,7 +1934,7 @@ func test_performance_impact():
         bus.publish("perf_test", {"index": i})
     
     var duration = Time.get_time_dict_from_system().unix - start_time
-    print("✅ 10k events processed in: ", duration, "s")
+    print("10k events processed in: ", duration, "s")
     
     # Should be faster than 100ms for stripped build
     assert(duration < 0.1, "Performance regression detected!")
@@ -1967,4 +1967,4 @@ func restore_full_functionality():
 
 ---
 
-*This documentation covers GoatBus v1.1.0 "Enhanced". The full engine version will include pattern-based event analysis and machine learning integration. Stay tuned for updates!*
+*This documentation covers GOAT_bus v1.1.0. Stay tuned for updates!*
