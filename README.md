@@ -11,7 +11,7 @@
 
 ## Overview
 
-GOAT_bus is a production-ready event communication system designed for my in development **2.5D_engine** project. Unlike traditional event buses, GoatBus provides enterprise-level features including persistent queuing, event replay, backpressure control, health-aware routing, and a complete analysis framework for development productivity.
+GOAT_bus is a production-ready event communication system designed for my in development **2.5D_engine** project. Unlike traditional event buses, GOAT_bus provides enterprise-level features including persistent queuing, event replay, backpressure control, health-aware routing, and a complete analysis framework for development productivity.
 
 ### Why GOAT_bus?
 
