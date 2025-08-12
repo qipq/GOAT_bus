@@ -1472,7 +1472,7 @@ examples/
 
 - **Issues**: [GitHub Issues](https://github.com/oneofhamy/goat_bus/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/oneofhamy/goat_bus/discussions)
-- **Wiki**: [Community Wiki](https://github.com/yourusername/goat_bus/wiki)
+- **Wiki**: [Community Wiki](https://github.com/oneofhamy/goat_bus/wiki)
 - **Discord**: [2.5D-Engine Discord](https://discord.gg/your-invite)
 
 ---
