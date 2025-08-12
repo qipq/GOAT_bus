@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://bvq8j2x3m4n5p"]
+
+[ext_resource type="Script" path="res://addons/GOAT_bus/goat_bus/goat_bus.gd" id="1_0x8y9"]
+[ext_resource type="Script" path="res://addons/GOAT_bus/wrappers/object_injector_node.gd" id="2_1a2b3"]
+
+[node name="GoatBus" type="Node"]
+script = ExtResource("1_0x8y9")
+
+[node name="ObjectInjectorNode" type="Node" parent="."]
+script = ExtResource("2_1a2b3")
