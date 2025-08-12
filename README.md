@@ -321,7 +321,7 @@ analysis_system.analyze_script("res://player.gd")  # New analysis features
 ## By the Numbers
 
 ### **Code Growth**
-- **+20,000 lines** of new analysis and injection code
+- **+5,000 lines** of new analysis and injection code (~9,500 total)
 - **+15 new classes** for analysis system
 - **+200 new methods** across all systems
 - **+50 new configuration options**
