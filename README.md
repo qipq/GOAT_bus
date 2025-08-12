@@ -437,26 +437,6 @@ GoatBus v1.1 sets the foundation for the upcoming **v2.0 "Full Engine"** release
 
 ---
 
-## How Does it Work?
-
-GoatBus v1.1 is a comprehensive system with multiple components:
-
-**Core Event Bus** (`goat_bus.gd`) provides the messaging backbone handling decoupling, storage, validation, backpressure, replay, batching, etc.
-
-**Node Wrapper** (`object_injector_node.gd`) serves as the intermediary for communication to any node, handling subscriptions, auto-retry, modular decoupling, scene-tree hooks, and local config.
-
-**Analysis Framework** includes script analysis, object injection, file monitoring, and development tools for enhanced productivity.
-
-Breaking it down like this has several advantages:
- - Nodes can subscribe/unsubscribe at any time as they enter/exit the tree.
- - You can attach the node wrapper as a child or script on *any* scene, enemies, terrain chunks, UI, you name it.
- - You can have multiple buses for different subsystems (audio, net, world, etc...) or "local" buses for a branch of the tree, like a dungeon or a menu.
- - When you reload scenes or scripts in the editor or even in game, the node wrapper handles auto-reconnection and cleans up subscriptions, no more dangling or weak links.
- - The analysis system provides development tools and script insights without impacting runtime performance.
- - And at least a dozen more, now that you get the idea.
-
----
-
 ## Quick Start
 
 ### 1. Basic Setup
@@ -512,7 +492,7 @@ func setup_events():
 
 ```
 Main (Node)
-├── GoatBusSystem (GoatBus + ObjectInjectorNode)  # Plugin autoload
+├── GoatBusSystem (GoatBus + ObjectInjectorNode)  # Inject scene
 ├── GameManager (Node)
 │   └── EventNode (ObjectInjectorNode)            # Game-level events
 ├── UI (CanvasLayer)
@@ -1312,7 +1292,7 @@ func profile_event_performance():
 
 ## Roadmap
 
-### Current Version (1.1.0 - "Enhanced")
+### Current Version (1.1.0)
 -  Core event system with advanced queuing
 -  Replay system and time windows
 -  Backpressure control and health-aware routing
@@ -1322,7 +1302,7 @@ func profile_event_performance():
 -  Object injection and development tools
 -  Plugin integration and file monitoring
 
-### Next Version (2.0.0 - "Full Engine")
+### Next Version (2.0.0)
 - **Pattern-Based Event Analysis**
   - Machine learning integration for event pattern recognition
   - Procedural generation debugging tools
@@ -1358,7 +1338,6 @@ func profile_event_performance():
 ### Long-term Goals (3.0.0+)
 - Cross-platform event synchronization
 - Cloud-based event analytics
-- AI-powered event optimization
 - Visual scripting integration
 
 ---
@@ -1490,14 +1469,6 @@ examples/
     ├── memory_test.gd
     └── benchmark_suite.gd
 ```
-
-### Documentation Links
-
-- **API Documentation**: [Full API Reference](docs/api.md)
-- **Architecture Guide**: [System Design](docs/architecture.md)  
-- **Performance Guide**: [Optimization Tips](docs/performance.md)
-- **Migration Guide**: [From Other Systems](docs/migration.md)
-- **Contributing**: [Development Guidelines](CONTRIBUTING.md)
 
 ### Community & Support
 
