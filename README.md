@@ -13,8 +13,6 @@
 
 GOAT_bus is a production-ready event communication system designed for my in development **2.5D-engine** project. Unlike traditional event buses, GoatBus provides enterprise-level features including persistent queuing, event replay, backpressure control, and health-aware routing.
 
-**This is the "Lite" version** - the full engine implementation will include pattern-based event analysis for procedural generation debugging, nearly doubling the codebase size.
-
 ### Why GOAT_bus?
 
 **It is *literally* the most feature complete Godot event bus that is available to the public.**
