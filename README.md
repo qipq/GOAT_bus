@@ -36,7 +36,7 @@ GoatBus v1.1 introduces a complete analysis and object injection ecosystem along
 
 ---
 
-## Headline New Features
+## New Features
 
 ### **Complete Analysis System (NEW)**
 Brand new script analysis and object injection framework:
