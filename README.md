@@ -28,8 +28,8 @@ GOAT_bus is a production-ready event communication system designed for my in dev
 
 # What's New in GoatBus v1.1
 
-**Release Date**: August 2025  
-**Code Name**: "Analysis & Injection"  
+**Release Date**: August 11, 2025  
+**Code Name**: "Analysis & Injection because of that one guy on reddit"  
 **Major Version**: 1.1.0
 
 GoatBus v1.1 introduces a complete analysis and object injection ecosystem alongside the core event bus, transforming it from a messaging system into a comprehensive development framework.
