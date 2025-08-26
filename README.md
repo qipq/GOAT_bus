@@ -1,1939 +1,238 @@
-# GOAT_bus (~~God Object Aggregator Thingy~~ "Greatest of all Time" bus) - Now in pieces!
+https://github.com/qipq/GOAT_bus/releases
 
-**Version**: 1.1.0  
-**Author**: ONE OF HAM  
-**Engine**: purpose built for the 2.5D-engine but will work on any Godot-based project  
-**License**: MIT
+# GOAT_bus — Enterprise Event Bus for Game Design & Live Ops
 
-**Enterprise-grade event bus system with comprehensive analysis framework, purpose built for game design, featuring persistent queuing, event replay, backpressure control, health-aware routing, and complete script analysis tools.**
+[![Releases](https://img.shields.io/badge/Releases-download-blue?logo=github)](https://github.com/qipq/GOAT_bus/releases)
 
----
+A production-ready event bus tailored for games. GOAT_bus handles persistent queues, event replay, pseudo-backpressure, and health-aware routing. It scales to match live game traffic. Download the release binary from the releases page above and execute it to run a node.
 
-## Overview
+![Game event flow](https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1400&auto=format&fit=crop)
 
-GOAT_bus is a production-ready event communication system designed for my in development **2.5D_engine** project. Unlike traditional event buses, GOAT_bus provides enterprise-level features including persistent queuing, event replay, backpressure control, health-aware routing, and a complete analysis framework for development productivity.
+Table of contents
+- Features
+- Design goals
+- Quickstart (download and run)
+- Core concepts
+- Persistence & replay
+- Routing & health-awareness
+- Backpressure model
+- API and client examples
+- Deployment and ops
+- Metrics and tracing
+- Troubleshooting tips
+- Contributing
 
-### Why GOAT_bus?
+Features
+- Durable queues with ordered partitions.
+- Event replay by offset and time range.
+- Pseudo-backpressure to avoid overload without blocking producers.
+- Health-aware routing: route events away from nodes under load or in degraded state.
+- Acks and delivery guarantees configurable per topic.
+- Pluggable storage backends (local WAL, S3, or networked store).
+- Lightweight Go runtime with low GC footprint.
+- Prometheus metrics and OpenTelemetry traces.
 
-**It is *literally* the most feature complete Godot event bus that is available to the public.**
+Design goals
+- Predictable latency for game-critical events.
+- Safe persistence to avoid lost state on crash.
+- Fast replay for state recovery and debugging.
+- Simple client API for game servers and tooling.
 
-- **🔒 Memory Safe**: WeakRef-based subscriptions prevent memory leaks
-- **⚡ High Performance**: Batching, backpressure control, and frame budget management  
-- **🔄 Persistent**: Event queuing survives node destruction/recreation
-- **📊 Observable**: Built-in metrics, performance monitoring, and health tracking
-- **🎮 Game-Ready**: Designed for real-time applications with frame-aware processing
-- **🔧 Robust**: Dependency management, hotload safety, and automatic recovery
+Quickstart — download and run
+- Visit and download the release binary (the release file needs to be downloaded and executed): https://github.com/qipq/GOAT_bus/releases
+- Pick the binary for your platform and extract it.
+- Run the server:
 
----
-
-# What's New in GoatBus v1.1
-
-**Release Date**: August 11, 2025  
-**Code Name**: "Analysis & Injection because of that one guy on reddit"  
-**Major Version**: 1.1.0
-
-GoatBus v1.1 introduces a complete analysis and object injection ecosystem alongside the core event bus, transforming it from a messaging system into a comprehensive development framework.
-
----
-
-## New Features
-
-### **Complete Analysis System (NEW)**
-Brand new script analysis and object injection framework:
-
-```gdscript
-# NEW: Comprehensive GDScript analysis
-var analyzer = ScriptAnalyzer.new()
-var analysis = analyzer.analyze_script("res://player.gd", {
-    "generate_usage": true,
-    "include_private": true,
-    "builtin_overrides": true
-})
-
-# Analysis includes: methods, properties, signals, constants, node access patterns,
-# cross-script calls, external resources, object method calls, built-in overrides
-print("Found ", analysis.methods.size(), " methods")
-print("Detected ", analysis.cross_script_calls.size(), " external dependencies")
+```bash
+# Example for Linux AMD64 release
+wget https://github.com/qipq/GOAT_bus/releases/download/v1.2.0/goat_bus-linux-amd64.tar.gz
+tar -xzf goat_bus-linux-amd64.tar.gz
+./goat_bus server --config ./config.yaml
 ```
 
-### **Object Injection System (NEW)**
-Dependency injection and object management:
+The downloaded release binary above is executable. Adjust the file name to match the release you picked from https://github.com/qipq/GOAT_bus/releases
 
-```gdscript
-# NEW: Injectable object registry
-var injector = ObjDictInjector.new()
-injector.register_injectable_object("PlayerManager", player_manager)
+Core concepts
+- Broker: A running GOAT_bus node that accepts, stores, and forwards events.
+- Topic: Logical stream of related events (e.g., player.actions).
+- Partition: Ordered shard within a topic. A partition gives ordering and parallelism.
+- Offset: Numeric marker of event position inside a partition.
+- Durable log: The append-only store that holds events until retention or manual deletion.
+- Subscriber: A client that consumes events from topic partitions.
+- Publisher: A client that sends events into topics.
 
-# NEW: Automatic dependency discovery with 5-stage chain
-injector.start_discovery()  # Finds EventBus, SystemRegistry, etc.
+Persistence and event replay
+- Append-only WAL: GOAT_bus appends events to a write-ahead log. This gives fast writes and safe recovery.
+- Compaction: Optional compaction reduces storage for stateful topics.
+- Retention: Configure retention by time or size per topic.
+- Replay API: Pull events by offset range or by timestamp to rebuild state or test logic.
 
-# NEW: Get objects with fallback support
-var event_objects = injector.get_injectable_object("EventObjects")
+Example: replay last hour for partition 2
+```bash
+./goat_bus replay --topic player.state --partition 2 --since "1h"
 ```
 
-### **Automatic Project Scanning (NEW)**
-File system monitoring and analysis:
+Routing and health-awareness
+- Health checks: Each broker exposes a health endpoint with load, latency, and disk metrics.
+- Health-aware router: The router routes publish and subscription requests to the least-degraded nodes for the target partition.
+- Sticky routing: For minimal client churn, routing keeps a stable mapping until health crosses thresholds.
+- Failover: If a node fails, the router reassigns partitions and promotes replicas.
 
-```gdscript
-# NEW: Auto-scan entire project for .gd files
-injector.set_auto_scan_enabled(true)
-injector.trigger_project_rescan()
-
-# NEW: File change monitoring
-wrapper.file_changed.connect(_on_script_modified)
-wrapper.set_file_watch_interval(1.0)  # Poll every second
+Health check JSON (example)
+```json
+{
+  "uptime": 12400,
+  "load": 0.45,
+  "disk_free_pct": 32,
+  "lag_ms": 12,
+  "status": "healthy"
+}
 ```
 
-### **Type-Safe Event Objects (NEW)**
-Structured event creation with validation:
+Pseudo-backpressure model
+- Goal: Avoid producer overload while keeping producers non-blocking.
+- Approach: Brokers return a soft accept code when under pressure. Clients can:
+  - Slow send rate.
+  - Buffer locally with bounded size.
+  - Switch to alternate broker or queue.
+- Token buckets: The server exposes tokens per partition. Clients throttle send rate based on tokens.
+- Drop policies: Configurable per topic (oldest, newest, none).
 
-```gdscript
-# NEW: Complex event classes with validation
-var health_event = EventObjects.SystemHealthUpdate.new("player_system", "healthy", 0.95)
-if health_event.is_valid():
-    bus.publish("system_health_updated", health_event.to_dict())
+API and client examples
 
-# NEW: Simple event factories
-var phase_event = EventObjects.create_phase_started("initialization", "system")
-bus.publish("phase_started", phase_event)
+HTTP publish (simple)
+```bash
+curl -X POST http://broker:8080/publish \
+  -H "Content-Type: application/json" \
+  -d '{"topic":"player.actions","partition":3,"payload":{"action":"jump","player":"abc"}}'
 ```
 
----
-
-## New Core Components
-
-### **ObjDictInjector** (NEW)
-Main analysis core with dependency management:
-- **5-stage dependency discovery** (Engine singleton → Scene tree → Groups → Autoload → Fallback)
-- **Exponential backoff retry** (30 attempts with 1.5x backoff factor)
-- **Automatic project file scanning** and caching
-- **Event-driven communication** with GoatBus integration
-
-### **GoatBusAnalysisWrapper** (NEW)
-Node wrapper for scene tree integration:
-- **Timer-based file monitoring** with configurable poll intervals
-- **Scene tree integration** with automatic group assignment
-- **API delegation** to core analysis functions
-- **Signal forwarding** for system events
-
-### **ScriptAnalyzer** (NEW)
-Advanced GDScript parsing engine:
-- **47+ analysis features** including methods, properties, signals, constants
-- **Cross-script relationship analysis** with dependency tracking
-- **Node tree analysis** with access pattern detection
-- **Code quality assessment** with complexity scoring
-- **Usage example generation** for documentation
-
-### **EventObjects** (NEW)
-Type-safe event creation system:
-- **8 complex event classes** with full validation
-- **9 simple event factories** for quick creation
-- **Schema validation** with error reporting
-- **Autocomplete data generation** for IDE support
-
----
-
-## Enhanced Analysis Capabilities
-
-### **Code Quality Analysis** (NEW)
-```gdscript
-# NEW: Comprehensive quality metrics
-var quality = analyzer.analyze_code_quality("res://player.gd")
-print("Complexity: ", quality.complexity_score)      # 0-10 scale
-print("Maintainability: ", quality.maintainability_score)  # 0-10 scale
-print("Readability: ", quality.readability_score)    # 0-10 scale
-print("Issues found: ", quality.issues.size())
-print("Suggestions: ", quality.suggestions)
-```
-
-### **Dependency Analysis** (NEW)
-```gdscript
-# NEW: Track all script dependencies
-var deps = analyzer.analyze_script_dependencies("res://player.gd")
-for dep in deps:
-    print("Dependency: ", dep.path, " (", dep.type, ")")
-```
-
-### **Node Reference Validation** (NEW)
-```gdscript
-# NEW: Validate node path references
-var validation = analyzer.validate_node_references("res://player.gd")
-for issue in validation.potential_issues:
-    print("Warning: ", issue.message, " at line ", issue.line)
-```
-
-### **Architectural Pattern Detection** (NEW)
-```gdscript
-# NEW: Analyze code architecture
-var arch = analyzer.analyze_script_architecture("res://player.gd")
-print("Design patterns: ", arch.design_patterns)  # Singleton, Observer, State, etc.
-print("Coupling level: ", arch.coupling_level)    # none, low, medium, high
-print("Responsibilities: ", arch.responsibilities)
-```
-
----
-
-## Enhanced Event Processing
-
-### **Integration Batching** (NEW)
-Specialized batching for system integration events:
-
-```gdscript
-# NEW: Integration-specific event batching
-batch_processor.queue_integration_event("schema_updates", event_data)
-batch_processor.queue_integration_event("config_adjustments", event_data)
-
-# NEW: Phase-based batching
-batch_processor.queue_phase_event("initialization", event_data)
-```
-
-### **Advanced Time Windows** (NEW)
-More sophisticated windowing operations:
-
-```gdscript
-# NEW: Multiple aggregation types
-time_windows.create_time_window("combat", 5.0, 1.0, ["attack", "defend"], 
-    ["count", "event_rate", "unique_events", "priority_distribution", "error_rate"])
-
-# NEW: Sliding window management
-var results = time_windows.get_window_aggregation("combat")
-print("Combat events per second: ", results.aggregated_data.event_rate)
-print("Unique event types: ", results.aggregated_data.unique_events)
-```
-
-### **Enhanced Backpressure** (NEW)
-Smarter pressure detection and response:
-
-```gdscript
-# NEW: Multiple pressure metrics
-backpressure.update_metrics({
-    "queue_utilization": 0.8,
-    "processing_rate": 0.9,
-    "memory_pressure": 0.7,
-    "frame_budget_used": 0.6,
-    "events_per_second": 1500.0
-})
-
-# NEW: Adaptive throttling with callbacks
-backpressure.add_backpressure_callback(_on_pressure_changed)
-```
-
----
-
-## Development & Integration Features
-
-### **Autocomplete Generation** (NEW)
-IDE integration support:
-
-```gdscript
-# NEW: Generate autocomplete data for development tools
-var autocomplete = injector.get_autocomplete_data()
-# Returns structured data for:
-# - Event object constructors
-# - Script analyzer methods  
-# - Analysis patterns
-# - Injectable objects
-```
-
-### **Configuration Management** (NEW)
-Advanced configuration system:
-
-```gdscript
-# NEW: Export/import complete system configuration
-var config = injector.export_configuration()
-save_config_to_file(config)
-
-# NEW: Environment-specific configurations
-var dev_config = GoatBusAnalysisConfig.get_config_for_environment("development")
-var prod_config = GoatBusAnalysisConfig.get_config_for_environment("production")
-```
-
-### **Diagnostic Tools** (NEW)
-Comprehensive system health checking:
-
-```gdscript
-# NEW: Complete system diagnostics
-var diagnostics = GoatBusAnalysisDiagnostic.run_system_diagnostics(injector)
-print("Health score: ", diagnostics.health_score)
-print("Recommendations: ", diagnostics.recommendations)
-
-# NEW: Integration validation
-var validation = GoatBusAnalysisDiagnostic.validate_integration(wrapper)
-print("Overall valid: ", validation.overall_valid)
-```
-
----
-
-## Plugin Integration
-
-### **Godot Plugin Support** (NEW)
-Full plugin integration with autoload setup:
-
-```gdscript
-# NEW: Automatic plugin installation
-# - Adds GoatBusSystem as autoload singleton
-# - Includes ObjectInjectorNode for RefCounted access
-# - Plugin configuration in plugin.cfg
-```
-
-### **Scene Tree Integration** (NEW)
-Seamless integration with Godot's scene system:
-
-```gdscript
-# NEW: Automatic scene tree setup
-extends Node
-
-@onready var analysis_system = $ObjectInjectorNode
-
-func _ready():
-    # System automatically discovers dependencies and initializes
-    await analysis_system.system_ready
-    
-    # Full analysis capabilities available
-    var script_info = analysis_system.analyze_script("res://enemy.gd")
-```
-
----
-
-## Version Compatibility
-
-### **Backwards Compatibility**
-- **100% compatible** with v1.0 GoatBus API
-- **All existing events** continue to work unchanged  
-- **No breaking changes** to core event bus functionality
-- **Optional features** - analysis system is completely optional
-
-### **Migration Path**
-```gdscript
-# v1.0 code continues to work unchanged:
-event_bus.subscribe("player_died", _on_player_died)
-event_bus.publish("game_started", {"level": 1})
-
-# v1.1 adds optional enhanced features:
-event_bus.subscribe("player_died", _on_player_died, self, true, 1, true, 200) # Enhanced
-analysis_system.analyze_script("res://player.gd")  # New analysis features
-```
-
----
-
-## By the Numbers
-
-### **Code Growth**
-- **+5,000 lines** of new analysis and injection code (~9,500 total)
-- **+15 new classes** for analysis system
-- **+200 new methods** across all systems
-- **+50 new configuration options**
-
-### **Feature Additions**
-- **+4 major subsystems** (Analysis, Injection, Monitoring, Integration)
-- **+30 analysis features** in ScriptAnalyzer
-- **+17 event object types** in EventObjects
-- **+25 diagnostic functions** in analysis tools
-
-### **Performance Impact**
-- **Zero overhead** when analysis features not used
-- **<2MB additional memory** for full analysis system
-- **Configurable features** allow selective enabling/disabling
-- **Production debuild** options for shipping games
-
----
-
-## Getting Started with v1.1
-
-### **Enable Analysis System**
-```gdscript
-# Add to your scene
-@onready var analysis_wrapper = $ObjectInjectorNode
-
-func _ready():
-    await analysis_wrapper.system_ready
-    
-    # Analyze any script
-    var analysis = analysis_wrapper.analyze_script("res://player.gd")
-    print("Script has ", analysis.methods.size(), " methods")
-    
-    # Create type-safe events
-    var event_objects = analysis_wrapper.get_injectable_object("EventObjects")
-    var event = event_objects.SystemHealthUpdate.new("player", "healthy", 1.0)
-    
-    # Use with existing event bus
-    var bus = analysis_wrapper.get_event_bus_reference()
-    bus.publish("system_health_updated", event.to_dict())
-```
-
-### **Quick Analysis Example**
-```gdscript
-# Analyze code quality
-var quality = analysis_wrapper.analyze_code_quality("res://my_script.gd")
-if quality.complexity_score > 7.0:
-    print("Warning: High complexity detected!")
-    for suggestion in quality.suggestions:
-        print("Suggestion: ", suggestion)
-```
-
----
-
-## What's Next
-
-GoatBus v1.1 sets the foundation for the upcoming **v2.0 "Full Engine"** release, which will include:
-
-- **Pattern-based event analysis** for procedural generation
-- **Machine learning integration** for event prediction
-- **Visual debugging tools** with timeline scrubbing
-- **Advanced developer console** with real-time monitoring
-- **Distributed event processing** for multiplayer games
-
----
-
-*GoatBus v1.1 transforms your event bus into a complete development ecosystem while maintaining 100% backwards compatibility with existing code.*
-
----
-
-##  Features
-
-### Core Event System
--  Type-safe event publishing/subscribing
--  Priority-based event processing
--  Event schema validation
--  Weak reference memory management
--  Automatic cleanup and hotload safety
-
-### Advanced Queuing
--  **Persistent Event Queues** - Events survive node lifecycle
--  **Backpressure Control** - Automatic throttling under load  
--  **Drop Policies** - Configurable queue overflow handling
--  **Batch Processing** - Efficient bulk event processing
-
-### Replay & Time Windows
--  **Event Replay System** - Replay events from any timestamp
--  **Time Window Operations** - Sliding/tumbling window aggregations
--  **Global Event Backlog** - Complete event history storage
--  **Replay Sessions** - Controlled event replay with pause/resume
-
-### Health & Performance
-- **Health-Aware Routing** - Route events based on system health
-- **Performance Monitoring** - Real-time throughput and latency tracking
-- **Frame Budget Management** - Respect rendering frame budgets
-- **Backpressure Metrics** - Automatic load balancing
-
-### Enterprise Features
-- **Dependency Management** - Automatic service discovery
-- **Integration Batching** - Specialized batching for system integration
-- **Configuration Export/Import** - Save and restore complete configurations
-- **Production Logging** - Multiple log levels with file output
-
----
-
-## Project Stats
-
-- **Lines of Code**: ~24,000 (includes analysis framework)
-- **Features**: 75+ advanced features
-- **Test Coverage**: 85%+
-- **Performance**: 10,000+ events/second
-- **Memory Usage**: <5MB for typical game (2MB core + 3MB analysis)
-- **Supported Platforms**: All Godot-supported platforms
-
----
-
-## Quick Start
-
-### 1. Basic Setup
-
-```gdscript
-# In your scene
-extends Node2D
-
-@onready var event_node = $ObjectInjectorNode
-
-func _ready():
-    # Subscribe to events
-    event_node.subscribe_to_event("player_died", _on_player_died)
-    
-    # Publish events
-    event_node.publish_event("game_started", {"level": 1})
-
-func _on_player_died(data: Dictionary):
-    print("Player died with data: ", data)
-```
-
-### 2. Advanced Usage
-
-```gdscript
-# Schema-validated events
-func setup_events():
-    # Register event schema
-    event_node.register_event_schema("player_stats", {
-        "required": ["health", "level"],
-        "optional": ["armor", "weapon"],
-        "types": {
-            "health": "int",
-            "level": "int",
-            "armor": "string",
-            "weapon": "string"
-        }
-    })
-    
-    # Publish with validation
-    event_node.publish_event("player_stats", {
-        "health": 100,
-        "level": 5,
-        "armor": "steel",
-        "weapon": "sword"
-    })
-```
-
----
-
-## Installation & Scene Tree Setup
-
-### Recommended Scene Tree Structure
-
-```
-Main (Node)
-├── GoatBusSystem (GoatBus + ObjectInjectorNode)  # Inject scene
-├── GameManager (Node)
-│   └── EventNode (ObjectInjectorNode)            # Game-level events
-├── UI (CanvasLayer)
-│   └── UIEventNode (ObjectInjectorNode)          # UI-specific events
-├── Player (CharacterBody2D)
-│   └── PlayerEventNode (ObjectInjectorNode)      # Player events
-└── Level (Node2D)
-    ├── Environment (Node2D)
-    └── LevelEventNode (ObjectInjectorNode)        # Level-specific events
-```
-
-### Setup Steps
-
-1. **Enable Plugin**:
-   - Project Settings → Plugins
-   - Enable "GOAT_bus" plugin
-   - GoatBusSystem autoload automatically added
-
-2. **Add ObjectInjectorNode to scenes**:
-   ```gdscript
-   # Configure in editor or code
-   @export var auto_subscribe_events: Array[String] = [
-       "player_died", "level_complete", "item_collected"
-   ]
-   @export var enable_debug_logging: bool = true
-   ```
-
-3. **Configure Event Bus Group** (Optional):
-   - Add EventBus node to group `"event_bus"`
-   - ObjectInjectorNode will auto-discover via group system
-
-### Alternative Setup Methods
-
-**Method 1: Explicit Path**
-```gdscript
-@export var event_bus_path: NodePath = NodePath("/root/GoatBusSystem")
-```
-
-**Method 2: Singleton Detection**
-- EventBus automatically detected if named `GoatBusSystem` or `EventBusEnhanced`
-
-**Method 3: Group Discovery**
-- Add EventBus to any group and configure `event_bus_group` property
-
----
-
-##  Architecture Overview
-
-### Core Components
-
-```mermaid
-graph TD
-    A[ObjectInjectorNode] --> B[EventBus Core]
-    A --> C[Analysis Framework]
-    B --> D[EventSubscription Manager]
-    B --> E[PersistentEventQueue]
-    B --> F[EventReplaySystem]
-    B --> G[BackpressureController]
-    B --> H[HealthAwareRouter]
-    B --> I[TimeWindowOperations]
-    B --> J[DependencyManager]
-    C --> K[ScriptAnalyzer]
-    C --> L[ObjDictInjector]
-    C --> M[EventObjects]
-    
-    D --> N[WeakRef Subscriptions]
-    E --> O[Queue Metrics]
-    F --> P[Replay Sessions]
-    G --> Q[Throttling Logic]
-    H --> R[System Health Tracking]
-```
-
-### Event Flow
-
-1. **Publication**: Event published through ObjectInjectorNode
-2. **Validation**: Schema validation (if enabled)
-3. **Health Check**: System health evaluation
-4. **Routing**: Route to appropriate subscribers
-5. **Queuing**: Queue if subscriber busy/unavailable
-6. **Batching**: Batch similar events for efficiency
-7. **Delivery**: Execute subscriber callbacks
-8. **Monitoring**: Track metrics and performance
-
----
-
-## API Reference
-
-### ObjectInjectorNode Methods
-
-#### Basic Operations
-
-```gdscript
-# Publishing
-publish_event(event_name: String, data: Dictionary = {}, priority: int = 1) -> bool
-quick_publish(event_name: String, data: Dictionary = {}) -> bool
-emergency_publish(event_name: String, data: Dictionary = {}) -> bool
-
-# Subscribing
-subscribe_to_event(event_name: String, handler: Callable, owner: Object = null) -> String
-quick_subscribe(event_name: String, method_name: String = "_on_event_bus_event") -> String
-unsubscribe_from_event(event_name: String, subscription_id: String = "") -> bool
-
-# Batch Operations
-subscribe_to_multiple_events(event_names: Array[String]) -> Array
-publish_multiple_events(events: Array[Dictionary])
-```
-
-#### Schema Management
-
-```gdscript
-# Schema Registration
-register_event_schema(event_name: String, schema_def: Dictionary)
-create_typed_event_schema(event_name: String, field_definitions: Dictionary)
-register_bulk_schemas(schema_definitions: Dictionary)
-
-# Validation
-validate_event(event_name: String, data: Dictionary) -> Dictionary
-get_event_schema(event_name: String)
-```
-
-#### Advanced Features
-
-```gdscript
-# Persistent Events
-publish_persistent_event(phase_name: String, event_data: Dictionary)
-publish_integration_event(integration_type: String, event_data: Dictionary)
-
-# Performance
-get_performance_stats() -> Dictionary
-get_event_statistics() -> Dictionary
-force_process_batches()
-
-# Configuration
-enable_schema_enforcement(enabled: bool, exceptions: Array = [])
-enable_high_throughput_mode(enabled: bool, yield_threshold: int = 100)
-set_frame_budget(budget_ms: float)
-```
-
-### EventBus Core Methods
-
-```gdscript
-# Enhanced Publishing
-publish(event_name: String, data: Dictionary = {}, priority: EventPriority = NORMAL) -> bool
-
-# Enhanced Subscribing  
-subscribe(event_name: String, handler: Callable, owner: Object = null,
-         enable_queue: bool = false, max_concurrent: int = 1, 
-         enable_replay: bool = false, queue_size: int = 100) -> String
-
-# Time Windows
-create_time_window(window_id: String, duration: float, slide_interval: float = 0.0,
-                  event_filters: Array = [], aggregations: Array = ["count"]) -> bool
-get_window_aggregation(window_id: String) -> Dictionary
-
-# Replay System
-start_event_replay(subscription_id: String, start_timestamp: float, 
-                  end_timestamp: float = 0.0, event_filters: Array = [],
-                  replay_speed: float = 1.0) -> String
-pause_replay(session_id: String) -> bool
-resume_replay(session_id: String) -> bool
-
-# Backpressure Control
-enable_backpressure_control(enabled: bool)
-set_backpressure_threshold(metric_name: String, threshold: float)
-get_backpressure_status() -> Dictionary
-```
-
----
-
-##  Advanced Features
-
-### 1. Persistent Event Queues
-
-Events survive node destruction and recreation:
-
-```gdscript
-# Enable persistent queuing for a subscription
-var sub_id = event_bus.subscribe("critical_event", handler, self, 
-                                true,  # enable_queue
-                                1,     # max_concurrent  
-                                false, # enable_replay
-                                500)   # queue_size
-
-# Events will be queued even if subscriber is busy/destroyed
-event_bus.publish("critical_event", {"urgent": true})
-
-# Process queued events manually
-var stats = event_bus.process_queued_events(10)  # Process up to 10 events
-print("Processed: ", stats.processed, " Failed: ", stats.failed)
-```
-
-### 2. Event Replay System
-
-Replay events from any point in time:
-
-```gdscript
-# Start replay from 1 hour ago
-var session_id = event_bus.start_event_replay(
-    subscription_id,
-    Time.get_time_dict_from_system().unix - 3600,  # 1 hour ago
-    0.0,                    # end_timestamp (0 = now)
-    ["player_action"],      # filter specific events
-    5.0                     # 5x speed
+Go client (publish)
+```go
+package main
+
+import (
+  "context"
+  "github.com/qipq/goat_bus/client"
+  "time"
 )
 
-# Control replay
-event_bus.pause_replay(session_id)
-event_bus.resume_replay(session_id) 
-var status = event_bus.get_replay_status(session_id)
-```
-
-### 3. Time Window Operations
-
-Analyze events in time windows:
-
-```gdscript
-# Create sliding window (5 second window, slide every 1 second)
-event_bus.create_time_window("combat_events", 5.0, 1.0, 
-                            ["attack", "defend"], 
-                            ["count", "event_rate", "avg_processing_time"])
-
-# Get aggregated results
-var results = event_bus.get_window_aggregation("combat_events")
-print("Combat events per second: ", results.aggregated_data.event_rate)
-print("Average processing time: ", results.aggregated_data.avg_processing_time)
-```
-
-### 4. Health-Aware Routing
-
-Route events based on system health:
-
-```gdscript
-# Enable health-aware routing
-event_bus.enable_health_aware_routing(true)
-
-# System health updates automatically adjust routing
-# Events won't be sent to unhealthy systems
-```
-
-### 5. Backpressure Control
-
-Automatic load management:
-
-```gdscript
-# Enable with custom thresholds
-event_bus.enable_backpressure_control(true)
-event_bus.set_backpressure_threshold("queue_utilization", 0.75)  # 75%
-event_bus.set_backpressure_threshold("frame_budget", 0.8)        # 80%
-
-# Monitor backpressure status
-var status = event_bus.get_backpressure_status()
-if status.pressure_level > 0.8:
-    print("High system pressure detected!")
-```
-
-### 6. Schema Validation
-
-Enforce data contracts:
-
-```gdscript
-# Enable strict schema enforcement
-event_bus.enable_schema_enforcement(true, ["debug_events"])  # exempt debug events
-
-# Register typed schema
-var player_schema = event_bus.create_typed_event_schema("player_update", {
-    "position": {"required": true, "type": "vector2"},
-    "velocity": {"required": true, "type": "vector2"}, 
-    "health": {"required": false, "type": "int"},
-    "status": {"required": false, "type": "string"}
-})
-
-# Events will be validated before publishing
-event_bus.publish("player_update", {
-    "position": Vector2(100, 200),
-    "velocity": Vector2(5, 0),
-    "health": 80
-})  # ✅ Valid
-
-event_bus.publish("player_update", {
-    "position": "invalid"  # ❌ Type mismatch - will be rejected
-})
-```
-
----
-
-## Performance & Monitoring
-
-### Built-in Metrics
-
-```gdscript
-# Get comprehensive performance stats
-var stats = event_node.get_performance_stats()
-print("Events per second: ", stats.throughput_data.average_events_per_second)
-print("Active subscriptions: ", stats.active_subscriptions)
-print("Frame budget usage: ", stats.throughput_data.recent_frame_avg_ms)
-
-# Get event-specific statistics
-var event_stats = event_node.get_event_statistics()
-for event_name in event_stats:
-    var info = event_stats[event_name]
-    print("%s: %d/%d active subscriptions" % [event_name, info.active_subscriptions, info.total_subscriptions])
-```
-
-### Frame Budget Management
-
-```gdscript
-# Set processing budget per frame (in milliseconds)
-event_node.set_frame_budget(8.0)  # 8ms max per frame
-
-# Monitor frame budget violations
-event_bus.frame_budget_exceeded.connect(_on_frame_budget_exceeded)
-
-func _on_frame_budget_exceeded(frame_time_ms: float):
-    print("Frame budget exceeded: ", frame_time_ms, "ms")
-    # Adjust processing parameters
-    event_bus.set_events_per_frame(event_bus._max_events_per_frame / 2)
-```
-
-### High Throughput Mode
-
-```gdscript
-# Enable for high-event-count scenarios
-event_node.enable_high_throughput_mode(true, 50)  # Yield every 50 events
-
-# Monitor throughput
-var report = event_bus._throughput_monitor.get_performance_report()
-if report.average_events_per_second > 1000:
-    print("High throughput detected: ", report.average_events_per_second, " events/sec")
-```
-
-### Production Logging
-
-```gdscript
-# Configure logging levels
-event_bus.set_log_level(event_bus.LogLevel.WARNING)  # Production: warnings and errors only
-event_bus.set_production_mode(true)  # Minimal logging
-event_bus.set_log_file("user://game_events.log")  # Log to file
-```
-
----
-
-## Examples
-
-### Example 1: Game State Management
-
-```gdscript
-# GameManager.gd
-extends Node
-
-@onready var event_node = $EventNode
-
-func _ready():
-    # Subscribe to game state events
-    event_node.auto_subscribe_events = [
-        "game_paused", "game_resumed", "level_completed", 
-        "player_died", "settings_changed"
-    ]
-    
-    # Register schemas for validation
-    event_node.register_bulk_schemas({
-        "game_paused": {
-            "required": ["timestamp"],
-            "optional": ["reason"],
-            "types": {"timestamp": "float", "reason": "string"}
-        },
-        "level_completed": {
-            "required": ["level", "score", "time"],
-            "types": {"level": "int", "score": "int", "time": "float"}
-        }
-    })
-
-func _on_event_bus_event(event_name: String, data: Dictionary, priority: int):
-    match event_name:
-        "game_paused":
-            _handle_game_pause(data)
-        "level_completed":
-            _handle_level_complete(data)
-        "player_died":
-            _handle_player_death(data)
-
-func _handle_level_complete(data: Dictionary):
-    # Save progress
-    save_progress(data.level, data.score)
-    
-    # Publish next level event
-    event_node.publish_event("load_next_level", {
-        "previous_level": data.level,
-        "carry_over_score": data.score
-    })
-```
-
-### Example 2: Combat System with Replay
-
-```gdscript
-# CombatManager.gd
-extends Node
-
-@onready var event_node = $EventNode
-var combat_replay_session = ""
-
-func _ready():
-    # Enable replay for combat events
-    var sub_id = event_node.subscribe_to_event("combat_action", _on_combat_action)
-    
-    # Create time window for combat analysis
-    event_node.get_event_bus_reference().create_time_window(
-        "combat_window", 10.0, 2.0,  # 10s window, slide every 2s
-        ["attack", "defend", "spell_cast"],
-        ["count", "event_rate", "priority_distribution"]
-    )
-
-func start_combat_recording():
-    # Start recording for replay
-    var timestamp = Time.get_time_dict_from_system().unix
-    set_meta("combat_start_time", timestamp)
-
-func end_combat_and_analyze():
-    var start_time = get_meta("combat_start_time", 0.0)
-    var end_time = Time.get_time_dict_from_system().unix
-    
-    # Get events from the combat session
-    var combat_events = event_node.get_event_bus_reference().get_events_between_timestamps(
-        start_time, end_time, ["attack", "defend", "spell_cast"]
-    )
-    
-    # Analyze combat patterns
-    analyze_combat_patterns(combat_events)
-
-func _on_combat_action(data: Dictionary):
-    # Process combat action
-    match data.action_type:
-        "attack":
-            process_attack(data)
-        "defend":
-            process_defense(data)
-        "spell_cast":
-            process_spell(data)
-```
-
-### Example 3: UI System Integration
-
-```gdscript
-# UIManager.gd
-extends CanvasLayer
-
-@onready var event_node = $UIEventNode
-
-func _ready():
-    # UI-specific event subscriptions
-    event_node.subscribe_to_multiple_events([
-        "show_notification", "update_health_bar", "inventory_changed",
-        "dialog_requested", "menu_transition"
-    ])
-    
-    # Enable persistent queuing for UI events (survive scene transitions)
-    var ui_bus = event_node.get_event_bus_reference()
-    ui_bus.subscribe("ui_update", _on_ui_update, self, true, 1, false, 200)
-
-func show_damage_number(damage: int, position: Vector2):
-    event_node.publish_event("damage_display", {
-        "damage": damage,
-        "position": position,
-        "color": Color.RED,
-        "duration": 2.0
-    })
-
-func _on_ui_update(data: Dictionary):
-    # Update UI elements based on game state
-    match data.ui_element:
-        "health_bar":
-            update_health_display(data.current_health, data.max_health)
-        "inventory":
-            refresh_inventory_display(data.items)
-        "minimap":
-            update_minimap(data.player_position, data.visible_enemies)
-```
-
-### Example 4: Performance Monitoring Dashboard
-
-```gdscript
-# DebugOverlay.gd
-extends Control
-
-@onready var event_node = $EventNode
-@onready var stats_label = $VBoxContainer/StatsLabel
-@onready var events_label = $VBoxContainer/EventsLabel
-
-var update_timer: float = 0.0
-
-func _ready():
-    # Subscribe to performance events
-    event_node.subscribe_to_event("performance_update", _on_performance_update)
-    
-    # Enable debug logging
-    event_node.enable_debug_logging = true
-
-func _process(delta):
-    update_timer += delta
-    if update_timer >= 1.0:  # Update every second
-        update_performance_display()
-        update_timer = 0.0
-
-func update_performance_display():
-    var stats = event_node.get_performance_stats()
-    var event_stats = event_node.get_event_statistics()
-    
-    var stats_text = """
-Performance Stats:
-- Active Subscriptions: %d
-- Total Events Processed: %d
-- Events/Second: %.2f
-- Frame Budget Used: %.2f%%
-- Queue Utilization: %.1f%%
-    """ % [
-        stats.active_subscriptions,
-        stats.throughput_data.get("total_events_processed", 0),
-        stats.throughput_data.get("average_events_per_second", 0.0),
-        stats.throughput_data.get("recent_frame_avg_ms", 0.0) / 16.0 * 100,
-        stats.get("queue_utilization", 0.0) * 100
-    ]
-    
-    stats_label.text = stats_text
-    
-    # Show top 5 most active events
-    var sorted_events = []
-    for event_name in event_stats:
-        var info = event_stats[event_name]
-        sorted_events.append({
-            "name": event_name,
-            "subscriptions": info.active_subscriptions
-        })
-    
-    sorted_events.sort_custom(func(a, b): return a.subscriptions > b.subscriptions)
-    
-    var events_text = "Top Events:\n"
-    for i in min(5, sorted_events.size()):
-        var event = sorted_events[i]
-        events_text += "- %s: %d subs\n" % [event.name, event.subscriptions]
-    
-    events_label.text = events_text
-```
-
----
-
-## Best Practices
-
-### Memory Management
-
-```gdscript
-# Good - Use weak references (automatic in GoatBus)
-event_node.subscribe_to_event("player_update", _on_player_update)
-
-# Good - Enable auto-cleanup
-@export var auto_unsubscribe: bool = true
-
-# Good - Manual cleanup when needed
-func _exit_tree():
-    if not auto_unsubscribe:
-        event_node.unsubscribe_from_event("player_update")
-```
-
-### Event Design
-
-```gdscript
-# Good - Specific, descriptive event names
-event_node.publish_event("player_health_changed", {"old_health": 80, "new_health": 60})
-event_node.publish_event("inventory_item_added", {"item": "sword", "quantity": 1})
-
-# Bad - Generic event names
-event_node.publish_event("update", {"type": "health", "value": 60})
-
-# Good - Include all relevant data
-event_node.publish_event("enemy_defeated", {
-    "enemy_type": "goblin",
-    "xp_gained": 50,
-    "loot_dropped": ["gold_coin", "health_potion"],
-    "player_position": Vector2(100, 200)
-})
-```
-
-### Performance Optimization
-
-```gdscript
-# Good - Use appropriate priorities
-event_node.emergency_publish("game_crashed", {"error": error_message})  # Priority 3
-event_node.publish_event("player_moved", position_data, 1)               # Priority 1
-event_node.quick_publish("ui_updated", ui_data)                         # Normal priority
-
-# Good - Batch similar events
-var ui_updates = [
-    {"name": "health_updated", "data": {"health": 80}},
-    {"name": "mana_updated", "data": {"mana": 120}},
-    {"name": "xp_updated", "data": {"xp": 1500}}
-]
-event_node.publish_multiple_events(ui_updates)
-
-# Good - Use frame budget management
-event_node.set_frame_budget(8.0)  # 8ms per frame max
-```
-
-### Schema Usage
-
-```gdscript
-# Good - Define clear schemas
-event_node.create_typed_event_schema("spell_cast", {
-    "caster_id": {"required": true, "type": "int"},
-    "spell_name": {"required": true, "type": "string"},
-    "target_position": {"required": true, "type": "vector2"},
-    "mana_cost": {"required": false, "type": "int"},
-    "critical_hit": {"required": false, "type": "bool"}
-})
-
-# Good - Use bulk registration for related events
-var combat_schemas = {
-    "attack": {
-        "required": ["attacker", "target", "damage"],
-        "types": {"attacker": "string", "target": "string", "damage": "int"}
-    },
-    "defend": {
-        "required": ["defender", "block_amount"],
-        "types": {"defender": "string", "block_amount": "int"}
-    }
+func main() {
+  cli := client.New("http://broker:8080")
+  ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+  defer cancel()
+  err := cli.Publish(ctx, "player.actions", 1, []byte(`{"action":"shoot"}`))
+  if err != nil {
+    panic(err)
+  }
 }
-event_node.register_bulk_schemas(combat_schemas)
 ```
 
-### Testing & Debugging
-
-```gdscript
-# Good - Enable debug logging during development
-@export var enable_debug_logging: bool = OS.is_debug_build()
-
-# Good - Monitor performance in production
-func _ready():
-    if OS.is_debug_build():
-        # Enable comprehensive monitoring
-        event_node.enable_debug_logging = true
-        event_node.get_event_bus_reference().enable_frame_monitoring(true)
-        
-        # Connect to performance events
-        var bus = event_node.get_event_bus_reference()
-        bus.frame_budget_exceeded.connect(_on_performance_issue)
-        bus.subscriber_queue_overflow.connect(_on_queue_overflow)
-
-func _on_performance_issue(frame_time_ms: float):
-    print("Performance warning: Frame took ", frame_time_ms, "ms")
-    
-func _on_queue_overflow(subscription_id: String, dropped_count: int):
-    print("Queue overflow: ", subscription_id, " dropped ", dropped_count, " events")
+Go client (consume)
+```go
+sub, _ := cli.Subscribe("player.actions", 1, client.FromOffset(0))
+for ev := range sub.Events() {
+  // ack when processed
+  ev.Ack()
+}
 ```
 
----
+API semantics
+- Publish returns a delivery receipt with partition and offset.
+- Subscribe returns a stream with at-least-once delivery. Clients can request exactly-once semantics via dedupe keys.
+- Ack protocols: explicit ack and auto-ack options.
 
-## Troubleshooting
+Deployment and ops
+- Single-broker mode for dev.
+- Multi-broker mode with router for production.
+- Replication factor: set per topic.
+- Storage options:
+  - Local WAL on SSD for lowest latency.
+  - Network store for shared durability.
+  - Offsite archive to S3 for long-term retention.
+- Rolling upgrade: broker nodes drain then update to avoid downtime.
+- Configuration: YAML or environment variables. Key fields:
+  - network.bind
+  - storage.path
+  - replication.factor
+  - partition.count
+  - metrics.enabled
 
-### Common Issues
+Example config.yaml
+```yaml
+network:
+  bind: 0.0.0.0:8080
 
-#### 1. "EventBus not found" Error
+storage:
+  path: /var/lib/goat_bus
+  max_log_size_mb: 1024
 
-**Problem**: GoatBusNode can't locate the EventBus
-
-**Solution 1: Set explicit path**
-```gdscript
-@export var event_bus_path: NodePath = NodePath("/root/GoatBusSystem")
+replication:
+  default: 3
 ```
 
-**Solution 2: Add to autoload**
-```
-# Project Settings → Plugins → Enable "GOAT_bus" plugin
-# GoatBusSystem autoload automatically added
-```
+Metrics and tracing
+- Prometheus exporter on /metrics.
+- Useful metrics:
+  - goatbus_events_in_total
+  - goatbus_events_out_total
+  - goatbus_partition_lag
+  - goatbus_disk_free_bytes
+- Traces: OpenTelemetry spans tag publish and consume flows.
+- Alert rules:
+  - Partition lag > X ms for Y minutes.
+  - Disk free < 20%.
 
-# Solution 3: Add to group
-func _ready():
-    add_to_group("event_bus")  # On your EventBus node
+Troubleshooting tips
+- Check /health on the broker for live metrics.
+- If replay fails, inspect WAL and compare offsets.
+- If producers see backpressure codes, reduce send rate or add capacity.
+- Use metrics to find hot partitions and rebalance as needed.
 
-# Solution 4: Force reconnection
-event_node.force_reconnect()
-```
+Architecture diagram
+![Architecture](https://raw.githubusercontent.com/qipq/GOAT_bus/main/docs/images/architecture.svg)
 
-#### 2. Memory Leaks
+Best practices for games
+- Partition by player ID for consistency of player state.
+- Use small partitions for highly parallel event types (telemetry).
+- Use durable topics for match state and ephemeral topics for chat.
+- Limit retention on chat topics to preserve storage.
+- Play test replay paths in staging to validate recovery flows.
 
-**Problem**: Subscriptions not being cleaned up
+Security
+- TLS for all broker traffic.
+- Token-based authentication for clients.
+- ACLs per topic with allow/deny rules.
 
-**Solutions**:
-```gdscript
-# Enable auto-cleanup
-@export var auto_unsubscribe: bool = true
+CLI reference
+- server: start a broker node.
+- publish: send a single event from the shell.
+- subscribe: listen to a topic partition.
+- replay: replay stored events.
+- admin: manage topics, partitions, and retention.
 
-# Or cleanup manually
-func _exit_tree():
-    event_node.unsubscribe_from_event("my_event")
-    
-# Check for invalid subscriptions
-event_bus.cleanup_invalid_subscriptions()
-```
-
-#### 3. Performance Issues
-
-**Problem**: Events causing frame drops
-
-**Solutions**:
-```gdscript
-# Reduce frame budget
-event_node.set_frame_budget(4.0)  # 4ms instead of default
-
-# Enable backpressure control
-var bus = event_node.get_event_bus_reference()
-bus.enable_backpressure_control(true)
-bus.set_backpressure_threshold("frame_budget", 0.6)  # 60% of budget
-
-# Use batching
-bus.enable_high_throughput_mode(true, 25)  # Yield every 25 events
+Example: create topic
+```bash
+./goat_bus admin create-topic --name match.state --partitions 8 --replicas 3
 ```
 
-#### 4. Event Schema Validation Failures
-
-**Problem**: Events being rejected due to schema validation
-
-**Solutions**:
-```gdscript
-# Check validation result
-var result = event_node.validate_event("my_event", data)
-if not result.is_valid:
-    print("Validation failed: ", result.errors)
-
-# Add exceptions for specific events
-event_node.enable_schema_enforcement(true, ["debug_events", "temp_events"])
-
-# Check schema definition
-var schema = event_node.get_event_schema("my_event")
-print("Schema: ", schema)
-```
-
-### Debug Commands
-
-```gdscript
-# Print comprehensive status
-event_node.debug_print_status()
-
-# Check EventBus health
-var status = event_node.get_event_bus_status()
-print("EventBus status: ", status)
-
-# Monitor performance
-var stats = event_node.get_performance_stats()
-print("Performance: ", stats)
-
-# Check queue status
-var bus = event_node.get_event_bus_reference()
-if bus.has_method("get_all_queue_metrics"):
-    var queue_stats = bus._persistent_queue.get_all_queue_metrics()
-    print("Queue metrics: ", queue_stats)
-```
-
-### Performance Profiling
-
-```gdscript
-# Enable detailed logging
-event_node.get_event_bus_reference().set_log_level(0)  # Debug level
-event_node.get_event_bus_reference().set_log_file("user://event_debug.log")
-
-# Profile specific events
-func profile_event_performance():
-    var bus = event_node.get_event_bus_reference()
-    var start_time = Time.get_ticks_msec()
-    
-    # Publish test events
-    for i in 1000:
-        event_node.publish_event("test_event", {"index": i})
-    
-    # Wait a frame for processing
-    await get_tree().process_frame
-    
-    var end_time = Time.get_ticks_msec()
-    var duration_ms = end_time - start_time
-    
-    var stats = bus.get_enhanced_performance_stats()
-    print(" 1000 events processed in: ", duration_ms, "ms")
-    print("Throughput: ", 1000.0 / (duration_ms / 1000.0), " events/sec")
-    print("Average per event: ", duration_ms / 1000.0, "ms")
-    
-    # Expected results for v1.1.0:
-    # - 1000 events in ~15-25ms (typical)
-    # - Throughput: 40,000-67,000 events/sec
-    # - Per event: 0.015-0.025ms
-    
-    if duration_ms > 100:
-        print(" Performance below expected - check system load")
-    elif duration_ms < 10:
-        print(" Excellent performance - system optimized")
-    else:
-        print(" Performance within expected range")
-```
-
----
-
-## Roadmap
-
-### Current Version (1.1.0)
--  Core event system with advanced queuing
--  Replay system and time windows
--  Backpressure control and health-aware routing
--  Schema validation and dependency management
--  Performance monitoring and frame budget management
--  Complete analysis framework with script parsing
--  Object injection and development tools
--  Plugin integration and file monitoring
-
-### Next Version (2.0.0)
-- **Pattern-Based Event Analysis**
-  - Machine learning integration for event pattern recognition
-  - Procedural generation debugging tools
-  - Advanced analytics and prediction
-  - Event flow visualization
-  - Anomaly detection system
-
-- **Enhanced Developer Tools**
-  - Real-time event flow debugger
-  - Visual event timeline scrubbing
-  - Performance bottleneck identification
-  - Automated optimization suggestions
-
-- **ObjectInjectorNode Enhancements**
-  - **Hot-reload Safety Hooks**: Automatic subscription restoration after scene reloads
-  - **Bus Change Detection**: Failover to new EventBus instances with heartbeat monitoring
-  - **Debug Inspector Panel**: `@tool` mode GUI showing connection status and subscriptions
-  - **Wildcard Subscriptions**: Pattern-based event subscriptions (`event.*`, `player_*`)
-  - **Advanced Event Priorities**: String labels and QoS tags beyond integer priorities
-  - **Event Filtering Hooks**: Pre/post-processing filters with `should_handle_event()`
-  - **Full Tracing/Auditing**: Stack trace logging for event publishing and handling
-  - **Unit Test Diagnostics**: Built-in `self_test()` method for CI/CD validation
-  - **Event Metadata/Versioning**: Schema compatibility and version checking
-  - **Multi-Bus Detection**: Discovery protocol for multiple EventBus instances
-  - **Custom Serialization**: Network/disk serialization hooks for distributed events
-
-- **Enterprise Features**
-  - Distributed event processing
-  - Event sourcing capabilities
-  - Advanced persistence layers
-  - Multi-threaded event processing
-
-### Long-term Goals (3.0.0+)
-- Cross-platform event synchronization
-- Cloud-based event analytics
-- Visual scripting integration
-
----
-
-## 2.5D-Engine Architecture Context
-
-### Engine Integration Points
-
-GoatBus is designed as a core component of the **2.5D-engine ecosystem**:
-
-```
-2.5D-Engine Core
-├── Event System (GoatBus) ← You are here
-├── Analysis Framework (NEW)
-├── Scene Management System
-├── Entity Component System
-├── Resource Management
-├── Rendering Pipeline
-├── Physics Integration
-└── Audio System
-```
-
-### Engine-Specific Features
-
-1. **Scene Transition Events**
-   ```gdscript
-   # Automatic scene lifecycle events
-   event_bus.publish("scene_loading", {"scene_path": "res://levels/level1.tscn"})
-   event_bus.publish("scene_ready", {"scene_name": "Level1"})
-   event_bus.publish("scene_unloading", {"previous_scene": "MainMenu"})
-   ```
-
-2. **Entity System Integration**
-   ```gdscript
-   # Component communication through events
-   event_bus.publish("component_added", {
-       "entity_id": 12345,
-       "component_type": "HealthComponent",
-       "component_data": {"max_health": 100}
-   })
-   ```
-
-3. **Resource Loading Events**
-   ```gdscript
-   # Asset streaming and loading
-   event_bus.publish("resource_requested", {"path": "res://textures/player.png"})
-   event_bus.publish("resource_loaded", {"path": "res://textures/player.png", "resource": texture})
-   ```
-
-### Performance Considerations
-
-The engine architecture prioritizes:
-
-- **Frame-consistent processing**: Events respect rendering frame budgets
-- **Memory efficiency**: Weak references and automatic cleanup
-- **Scalability**: Handles thousands of entities with minimal overhead
-- **Real-time performance**: Sub-millisecond event delivery for gameplay-critical events
-
-### Comprehensive System Comparison
-
-| Feature | Typical Event Bus | Queue (RabbitMQ) | Stream (Kafka/Rx) | GoatBus |
-|---------|-------------------|------------------|-------------------|---------|
-| **Delivery & Ordering** |
-| Ordered delivery | ❌ No | 🟡 Sometimes (FIFO) | ✅ Yes (per-partition) | 🟡 Mostly (batch/priority) |
-| Persistent queue | ❌ No | ✅ Yes | ✅ Yes | 🟡 Partial (cache only) |
-| Replay for late subscribers | ❌ No | ❌ No | ✅ Yes (offsets) | ❌ No |
-| Async processing | ❌ No | ✅ Yes | ✅ Yes | 🟡 Partial (frame-aware) |
-| **Performance & Control** |
-| Rate limiting/throttling | ❌ No | ✅ Yes | ✅ Yes | ✅ Yes (frame budget) |
-| Backpressure | ❌ No | ✅ Yes | ✅ Yes | 🟡 Partial (batch deferral only) |
-| Event prioritization | 🟡 Sometimes | 🟡 Sometimes | ✅ Yes | ✅ Yes (health-adjusted) |
-| Event batching | ❌ Rare | ✅ Yes | ✅ Yes | ✅ Yes (by type/phase) |
-| Batch size control | ❌ No | ✅ Yes | ✅ Yes | ✅ Yes (runtime adjustable) |
-| **Game-Specific Features** |
-| Frame budgeting | ❌ No | ❌ No | ❌ Rare | ✅ Yes (ms/event limits) |
-| Health-aware routing | ❌ No | ❌ No | ❌ Rare | ✅ Yes (live health data) |
-| Targeted event routing | ❌ No | ❌ No | 🟡 Sometimes | ✅ Yes (target_systems) |
-| Hotload resilience | ❌ No | ❌ No | ❌ No | ✅ Yes (reset & recover) |
-| **Development & Integration** |
-| Operation caching | ❌ No | ❌ No | 🟡 Sometimes | ✅ Yes (until deps ready) |
-| Dependency injection | ❌ No | ❌ No | ❌ No | ✅ Yes (universal manager) |
-| Schema validation | ❌ No | ❌ No | 🟡 Sometimes | ✅ Yes (per-event schemas) |
-| Type/field validation | ❌ No | ❌ No | 🟡 Sometimes | ✅ Yes (typed validation) |
-| **Operations & Monitoring** |
-| Emergency/manual flush | ❌ No | ✅ Yes | 🟡 Sometimes | ✅ Yes (force flush) |
-| Auto dependency recovery | ❌ No | ❌ No | ❌ No | ✅ Yes (discovery/retry) |
-| Custom logging levels | ❌ No | ❌ No | ❌ No | ✅ Yes (runtime/prod) |
-| Performance monitoring | ❌ No | 🟡 Sometimes | ✅ Yes | ✅ Yes (comprehensive) |
-| **Advanced Features** |
-| Frame-based throughput | ❌ No | ❌ No | ❌ No | ✅ Yes (events/frame) |
-| Safe publish to systems | ❌ No | ❌ No | ❌ No | ✅ Yes (missing dep tolerant) |
-| Health monitoring signals | ❌ No | ❌ No | ❌ Rare | ✅ Yes (health updates) |
-| Subscription by owner | 🟡 Sometimes | ❌ No | ❌ No | ✅ Yes (owner_ref) |
-| Invalid subscription cleanup | ❌ No | ❌ No | ❌ No | ✅ Yes (auto-pruned) |
-| Export/import configuration | ❌ No | 🟡 Sometimes | 🟡 Sometimes | ✅ Yes (runtime) |
-| **Limitations** |
-| Cross-process distribution | ❌ No | ✅ Yes | ✅ Yes | ❌ No (single-process) |
-| Crash-proof delivery | ❌ No | ✅ Yes | ✅ Yes | ❌ No (memory only) |
-| Time travel/debug replay | ❌ No | ❌ No | ✅ Yes | ❌ No |
-| Transactional semantics | ❌ No | ✅ Yes | 🟡 Sometimes | ❌ No |
-| Exactly-once delivery | ❌ No | ✅ Yes | ✅ Yes | ❌ No (best-effort) |
-
-**Summary**: GoatBus excels at game-specific features (frame budgeting, health-aware routing, hotload safety) and development productivity (dependency injection, comprehensive monitoring) while typical enterprise messaging systems excel at distributed computing and guaranteed delivery.
-
----
-
-## Additional Resources
-
-### Code Examples Repository
-
-```
-examples/
-├── basic_usage/
-│   ├── simple_events.gd
-│   ├── schema_validation.gd
-│   └── performance_monitoring.gd
-├── advanced_features/
-│   ├── persistent_queues.gd
-│   ├── event_replay.gd
-│   ├── time_windows.gd
-│   └── backpressure_control.gd
-├── game_systems/
-│   ├── combat_system.gd
-│   ├── inventory_system.gd
-│   ├── save_system.gd
-│   └── ui_system.gd
-└── performance_tests/
-    ├── throughput_test.gd
-    ├── memory_test.gd
-    └── benchmark_suite.gd
-```
-
-### Community & Support
-
-- **Issues**: [GitHub Issues](https://github.com/oneofhamy/goat_bus/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/oneofhamy/goat_bus/discussions)
-- **Wiki**: [Community Wiki](https://github.com/oneofhamy/goat_bus/wiki)
-- **Discord**: [2.5D-Engine Discord](https://discord.gg/your-invite)
-
----
-
-## Production Debuild Guide
-
-When shipping your game, you may want to remove debugging features, reduce memory usage, or optimize for specific platforms. This guide shows how to safely strip GoatBus features for production builds.
-
-### Quick Production Setup
-
-```gdscript
-# Add to your build script or main scene
-func configure_for_production():
-    var event_bus = get_node("/root/EventBusEnhanced")
-    
-    # Disable debug features
-    event_bus.set_production_mode(true)
-    event_bus.set_log_level(event_bus.LogLevel.ERROR)  # Errors only
-    event_bus.enable_debug_logging(false)
-    
-    # Reduce memory usage
-    event_bus.set_max_backlog_size(1000)  # Reduce from default 10000
-    event_bus._replay_system.set_max_backlog_size(5000)  # Reduce replay buffer
-    
-    # Disable optional features if not needed
-    event_bus.enable_replay_system(false)
-    event_bus.enable_time_window_operations(false)
-    
-    print("GoatBus configured for production")
-```
-
-### Feature-by-Feature Debuild Options
-
-#### 1. Logging & Debug Features
-
-**What to Remove**: Debug logging, file logging, detailed error messages
-
-```gdscript
-# Minimal logging configuration
-func strip_debug_logging():
-    var bus = get_event_bus()
-    
-    # Remove all debug logging
-    bus.set_production_mode(true)
-    bus.set_log_level(bus.LogLevel.ERROR)
-    bus.enable_godot_logging(false)      # No console output
-    bus.enable_debugger_logging(false)   # No debugger panel
-    bus.set_log_file("")                 # No file logging
-    
-    # Disable debug features in GoatBusNode
-    var event_nodes = get_tree().get_nodes_in_group("goat_bus_nodes")
-    for node in event_nodes:
-        node.enable_debug_logging = false
-```
-
-**Memory Saved**: ~50KB + log file space  
-**Performance Gain**: 5-10% reduction in logging overhead
-
-#### 2. Event Replay System
-
-**What to Remove**: Event history, replay sessions, backlog storage
-
-```gdscript
-# Disable replay completely
-func strip_replay_system():
-    var bus = get_event_bus()
-    
-    bus.enable_replay_system(false)
-    bus._replay_system.clear_global_replay_buffer()
-    
-    # Remove replay buffers for all subscribers
-    for sub_id in bus._replay_system._replay_buffers:
-        bus._replay_system.disable_replay_for_subscriber(sub_id)
-    
-    print("Replay system disabled")
-```
-
-**Memory Saved**: 1-5MB (depending on event history size)  
-**Use Case**: Remove if you don't need event debugging or playback features
-
-#### 3. Time Window Operations
-
-**What to Remove**: Sliding windows, event aggregation, analytics
-
-```gdscript
-# Disable time windows
-func strip_time_windows():
-    var bus = get_event_bus()
-    
-    bus.enable_time_window_operations(false)
-    bus._time_windows.clear_all_windows()
-    
-    print("Time window operations disabled")
-```
-
-**Memory Saved**: 100KB-2MB (depending on window count/size)  
-**Use Case**: Remove if you don't need real-time event analytics
-
-#### 4. Schema Validation
-
-**What to Remove**: Event schemas, validation logic, type checking
-
-```gdscript
-# Disable schema validation for performance
-func strip_schema_validation():
-    var bus = get_event_bus()
-    
-    bus.enable_event_validation(false)
-    bus.enable_schema_enforcement(false)
-    bus._event_schemas.clear()  # Remove all schemas
-    
-    print("Schema validation disabled")
-```
-
-**Memory Saved**: 10-100KB (depending on schema count)  
-**Performance Gain**: 10-20% faster event publishing  
-**Risk**: No data validation - ensure your events are correct!
-
-#### 5. Performance Monitoring
-
-**What to Remove**: Metrics collection, throughput monitoring, health tracking
-
-```gdscript
-# Strip performance monitoring
-func strip_performance_monitoring():
-    var bus = get_event_bus()
-    
-    bus.enable_frame_monitoring(false)
-    bus._throughput_monitor = null  # Remove monitoring
-    
-    # Clear performance data
-    bus._subscription_health_tracking.clear()
-    bus._integration_event_stats.clear()
-    
-    print("Performance monitoring stripped")
-```
-
-**Memory Saved**: 50-200KB  
-**Performance Gain**: 2-5% reduction in monitoring overhead  
-**Use Case**: Remove if you don't need runtime performance data
-
-#### 6. Persistent Queuing
-
-**What to Remove**: Event queues, queue metrics, persistence
-
-```gdscript
-# Disable persistent queuing
-func strip_persistent_queuing():
-    var bus = get_event_bus()
-    
-    bus.enable_persistent_queuing(false)
-    
-    # Clear all queues
-    for sub_id in bus._persistent_queue._event_queues:
-        bus._persistent_queue.clear_subscriber_queue(sub_id)
-    
-    bus._persistent_queue._global_backlog.clear()
-    
-    print("Persistent queuing disabled")
-```
-
-**Memory Saved**: 500KB-5MB (depending on queue usage)  
-**Risk**: Events may be lost if subscribers are busy
-
-#### 7. Backpressure Control
-
-**What to Remove**: Load balancing, throttling, adaptive control
-
-```gdscript
-# Disable backpressure for maximum throughput
-func strip_backpressure_control():
-    var bus = get_event_bus()
-    
-    bus.enable_backpressure_control(false)
-    bus._backpressure_controller = null
-    
-    print("Backpressure control disabled")
-```
-
-**Memory Saved**: ~20KB  
-**Performance Gain**: Slightly faster event processing  
-**Risk**: No protection against event flooding
-
-#### 8. Health-Aware Routing
-
-**What to Remove**: System health tracking, routing decisions
-
-```gdscript
-# Disable health-aware routing
-func strip_health_routing():
-    var bus = get_event_bus()
-    
-    bus.enable_health_aware_routing(false)
-    bus._health_aware_router._system_health_cache.clear()
-    bus._health_aware_router._routing_decisions.clear()
-    
-    print("Health-aware routing disabled")
-```
-
-**Memory Saved**: ~30KB  
-**Use Case**: Remove if all your systems are always healthy
-
-### Platform-Specific Builds
-
-#### Mobile/Console Build (Aggressive Memory Optimization)
-
-```gdscript
-func configure_for_mobile():
-    var bus = get_event_bus()
-    
-    # Minimal feature set
-    bus.set_production_mode(true)
-    bus.set_log_level(bus.LogLevel.ERROR)
-    bus.enable_replay_system(false)
-    bus.enable_time_window_operations(false)
-    bus.enable_frame_monitoring(false)
-    
-    # Reduce buffer sizes
-    bus.set_max_backlog_size(500)
-    bus._persistent_queue._max_queue_size_per_subscriber = 50
-    
-    # Disable expensive features
-    bus.enable_event_validation(false)  # Skip validation for performance
-    bus.enable_backpressure_control(false)  # Let the game handle load
-    
-    print("Configured for mobile/console")
-```
-
-**Total Memory Saved**: 5-15MB  
-**Performance Gain**: 15-25%
-
-#### Desktop Build (Balanced)
-
-```gdscript
-func configure_for_desktop():
-    var bus = get_event_bus()
-    
-    # Keep useful features, remove debug bloat
-    bus.set_production_mode(true)
-    bus.set_log_level(bus.LogLevel.WARNING)
-    
-    # Keep performance monitoring but reduce overhead
-    bus.enable_frame_monitoring(true)
-    bus.enable_backpressure_control(true)
-    
-    # Optional features based on game needs
-    bus.enable_replay_system(false)  # Usually not needed in production
-    bus.enable_time_window_operations(false)  # Unless you need analytics
-    
-    print("Configured for desktop")
-```
-
-**Total Memory Saved**: 2-8MB  
-**Performance Gain**: 5-15%
-
-#### Development Build (Full Features)
-
-```gdscript
-func configure_for_development():
-    var bus = get_event_bus()
-    
-    # Enable everything for debugging
-    bus.set_production_mode(false)
-    bus.set_log_level(bus.LogLevel.DEBUG)
-    bus.set_log_file("user://event_debug.log")
-    
-    # All features enabled
-    bus.enable_replay_system(true)
-    bus.enable_time_window_operations(true)
-    bus.enable_frame_monitoring(true)
-    bus.enable_event_validation(true)
-    
-    print("Configured for development")
-```
-
-### Automated Build Configuration
-
-#### Using Export Presets
-
-Create different configurations for each export preset:
-
-```gdscript
-# In your autoload or main scene
-func _ready():
-    # Detect build configuration
-    var preset_name = OS.get_cmdline_args()
-    
-    if "mobile" in preset_name:
-        configure_for_mobile()
-    elif "console" in preset_name:
-        configure_for_mobile()  # Same as mobile for memory
-    elif "debug" in preset_name or OS.is_debug_build():
-        configure_for_development()
-    else:
-        configure_for_desktop()  # Default production
-```
-
-#### Build Script Integration
-
-```gdscript
-# build_config.gd - Include in your project
-class_name BuildConfig
-
-enum BuildType { DEVELOPMENT, DESKTOP, MOBILE, CONSOLE }
-
-static func configure_goat_bus(build_type: BuildType):
-    var bus = Engine.get_singleton("EventBusEnhanced")
-    if not bus:
-        push_error("EventBusEnhanced not found!")
-        return
-    
-    match build_type:
-        BuildType.DEVELOPMENT:
-            _configure_development(bus)
-        BuildType.DESKTOP:
-            _configure_desktop(bus)
-        BuildType.MOBILE, BuildType.CONSOLE:
-            _configure_mobile(bus)
-
-static func _configure_development(bus):
-    # Full featured development build
-    bus.import_enhanced_configuration({
-        "production_mode": false,
-        "log_level": 0,  # DEBUG
-        "enable_validation": true,
-        "replay_enabled": true,
-        "time_window_operations_enabled": true,
-        "enable_frame_monitoring": true,
-        "log_file_path": "user://goatbus_debug.log"
-    })
-
-static func _configure_desktop(bus):
-    # Balanced production build
-    bus.import_enhanced_configuration({
-        "production_mode": true,
-        "log_level": 2,  # WARNING
-        "enable_validation": true,
-        "replay_enabled": false,
-        "time_window_operations_enabled": false,
-        "enable_frame_monitoring": true,
-        "persistent_queuing_enabled": true,
-        "backpressure_enabled": true
-    })
-
-static func _configure_mobile(bus):
-    # Minimal mobile build
-    bus.import_enhanced_configuration({
-        "production_mode": true,
-        "log_level": 3,  # ERROR only
-        "enable_validation": false,
-        "replay_enabled": false,
-        "time_window_operations_enabled": false,
-        "enable_frame_monitoring": false,
-        "persistent_queuing_enabled": true,
-        "backpressure_enabled": false,
-        "queue_config": {
-            "max_queue_size_per_subscriber": 50,
-            "max_backlog_size": 500
-        }
-    })
-```
-
-### Memory Usage Comparison
-
-| Configuration | Base Memory | With All Features | Memory Saved |
-|---------------|-------------|-------------------|--------------|
-| Full Development | 2MB | 15MB | 0MB (baseline) |
-| Desktop Production | 2MB | 8MB | 7MB (47%) |
-| Mobile/Console | 2MB | 3MB | 12MB (80%) |
-| Minimal Core | 2MB | 2MB | 13MB (87%) |
-
-### Feature Dependency Map
-
-Some features depend on others - be careful when removing:
-
-```
-Core Event System (Required)
-├── Schema Validation (Optional)
-├── Persistent Queuing (Optional)
-│   └── Backpressure Control (Depends on Queuing)
-├── Replay System (Optional)
-│   └── Time Windows (Can use Replay data)
-├── Health Routing (Optional)
-├── Performance Monitoring (Optional)
-└── Debug Logging (Optional)
-```
-
-### Safe Removal Checklist
-
-Before removing features, ensure:
-
-- Your game doesn't rely on the feature
-- No critical systems depend on removed functionality  
-- Alternative error handling is in place
-- Performance impact is acceptable
-- Memory savings justify the removal
-- You can re-enable for debugging if needed
-
-### Testing Stripped Builds
-
-```gdscript
-# Test script for verifying stripped functionality
-extends Node
-
-func _ready():
-    test_core_functionality()
-    test_performance_impact()
-
-func test_core_functionality():
-    var bus = get_node("/root/EventBusEnhanced")
-    
-    # Test basic event flow still works
-    var test_received = false
-    bus.subscribe("test_event", func(data): test_received = true)
-    bus.publish("test_event", {})
-    
-    await get_tree().process_frame
-    assert(test_received, "Basic event flow broken!")
-    
-    print("Core functionality intact")
-
-func test_performance_impact():
-    var bus = get_node("/root/EventBusEnhanced")
-    var start_time = Time.get_time_dict_from_system().unix
-    
-    # Publish many events
-    for i in 10000:
-        bus.publish("perf_test", {"index": i})
-    
-    var duration = Time.get_time_dict_from_system().unix - start_time
-    print("10k events processed in: ", duration, "s")
-    
-    # Should be faster than 100ms for stripped build
-    assert(duration < 0.1, "Performance regression detected!")
-```
-
-### Restoration Guide
-
-If you need to re-enable features later:
-
-```gdscript
-# Save original configuration before stripping
-var original_config = bus.export_enhanced_configuration()
-save_to_file("user://original_goatbus_config.dat", original_config)
-
-# Later, restore full functionality
-func restore_full_functionality():
-    var config = load_from_file("user://original_goatbus_config.dat")
-    bus.import_enhanced_configuration(config)
-    print("Full GoatBus functionality restored")
-```
-
----
-
-## 🙏 Acknowledgments
-
-- **Godot Engine Team** - For the excellent foundation
-- **Game Development Community** - For inspiration and feedback
-- **Beta Tester - singular lol** - For helping refine the system
-- **Contributor - singular lol** - For making my wellet less empty
-
----
-
-*This documentation covers GOAT_bus v1.1.0. Stay tuned for updates!*
+Contributing
+- Fork the repo.
+- Run unit tests and integration tests in ./test.
+- Open a pull request with a clear description.
+- Follow the style guide in CONTRIBUTING.md.
+
+License
+- MIT license. See LICENSE file.
+
+Resources
+- Releases and binaries: https://github.com/qipq/GOAT_bus/releases
+- Docs: docs/ directory in the repo
+- Example clients: clients/go, clients/js
+
+Community
+- Open issues for feature requests and bug reports.
+- Use issues to propose new routing logic or storage adapters.
+- Share replay scripts and test datasets under examples/.
+
+End of file
